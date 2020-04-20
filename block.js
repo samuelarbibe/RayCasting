@@ -8,6 +8,12 @@ class Block {
         this.closed = false;
     }
 
+    clear() {
+        this.points = [];
+        this.walls = [];
+        this.closed = false;
+    }
+
     addPoint(x, y) {
         if (this.points.length == 0) {
             this.points.push(createVector(x, y));
@@ -19,8 +25,7 @@ class Block {
             const y2 = this.points[0].y;
             this.walls.push(new Boundary(x1, y1, x2, y2));
             return false;
-        }
-        else {
+        } else {
             this.points.push(createVector(x, y));
             const x1 = this.points[this.points.length - 2].x;
             const y1 = this.points[this.points.length - 2].y;
@@ -47,17 +52,13 @@ class Block {
         return false;
     }
 
-    draw()
-    {
-        for(let wall of this.walls)
-        {
+    draw() {
+        for (let wall of this.walls) {
             wall.draw();
         }
 
-        if(!this.closed)
-        {
-            for(let point of this.points)
-            {
+        if (!this.closed) {
+            for (let point of this.points) {
                 ellipse(point.x, point.y, this.pointRadius);
             }
         }

@@ -24,8 +24,7 @@ class Particle {
 
         const nextPos = p5.Vector.add(movDir, this.pos);
         // check if out boundaries
-        if (nextPos.x < 0 || nextPos.y < 0 || nextPos.x > topViewW || nextPos.y > topViewH
-            || (direction > 0 && this.minDist < 5)) {
+        if (!checkBoundaries(nextPos.x, nextPos.y) || (direction > 0 && this.minDist < 5)) {
             return;
         }
         this.pos.add(movDir);
@@ -89,6 +88,15 @@ class Particle {
                 this.minDist = minDist;
             }
         }
+
+        if (showWallBorder) {
+            for (let r = 1; r < scene.length - 1; r++) {
+                if (scene[r + 1] - scene[r] > 50 || scene[r - 1] - scene[r] > 50) {
+                    scene[r] *= -1;
+                }
+            }
+        }
+
         return scene;
     }
 

@@ -14,20 +14,26 @@ class Scene {
 
     draw() {
         push();
-        
+
         const w = this.size.x / this.data.length;
         translate(this.pos.x, this.pos.y);
         // background
         const b1 = color(0);
         const b2 = color(245);
+        const c1 = color(255, 0, 0);
         setGradient(0, this.size.y / 2, this.size.x, this.size.y / 2, b1, b2);
+
+        setGradient(0, 0, this.size.x, this.size.y / 2, b2, b1);
         noStroke();
         for (let i = 0; i < this.data.length; i++) {
-            const color = map(this.data[i], 0, this.size.x/1.5, 255, 0);
-            const h = map(this.data[i], 0, this.size.x/1.5, this.size.y, 0);
+            let color = map(this.data[i], 0, this.size.x / 2, 255, 0);
+            if (this.data[i] < 0) {
+                color = c1;
+            }
+            const h = map(abs(this.data[i]), 0, this.size.x / 2, this.size.y, 0);
             fill(color);
             rectMode(CENTER);
-            rect(i * w + w / 2, this.size.y / 2, w+0.5, h);
+            rect(i * w + w / 2, this.size.y / 2, w + 0.5, h);
         }
         pop();
     }
