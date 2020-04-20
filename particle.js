@@ -3,25 +3,36 @@
 class Particle {
 
     constructor(fov, res) {
-        this.pos = createVector(topViewW / 2, topViewH / 2);
+        this.pos = createVector(topViewW / 2 + 1, topViewH / 2);
         this.rays = [];
         this.FOV = fov;
         this.resolution = res;
+        this.rayDirDelta = this.FOV / this.resolution;
         this.dir = createVector();
         this.angle = 0;
-        this.speed = 1;
+        this.speed = 1.5;
+        this.minDist = Infinity;
 
-        for (let a = 0; a < this.FOV; a += this.resolution) {
+        for (let a = 0; a < this.FOV; a += this.rayDirDelta) {
             this.rays.push(new Ray(this.pos, radians(a)));
         }
     }
 
     move(direction) {
         let movDir = this.dir.copy();
-        movDir.rotate(radians(direction));
-        movDir.mult(this.speed);
+        movDir.mult(this.speed * direction);
 
+        const nextPos = p5.Vector.add(movDir, this.pos);
+        // check if out boundaries
+        if (nextPos.x < 0 || nextPos.y < 0 || nextPos.x > topViewW || nextPos.y > topViewH
+            || (direction > 0 && this.minDist < 5)) {
+            return;
+        }
         this.pos.add(movDir);
+    }
+
+    rotate(amount) {
+        this.setAngle(this.angle + amount);
     }
 
     // get the mouse pos, point to it
@@ -31,7 +42,7 @@ class Particle {
         this.dir.normalize();
         this.angle = degrees(this.dir.heading());
 
-        for (let a = -this.FOV / 2, i = 0; a < this.FOV / 2; a += this.resolution, i++) {
+        for (let a = -this.FOV / 2, i = 0; a < this.FOV / 2; a += this.rayDirDelta, i++) {
             this.rays[i].setDir(radians(this.angle + a));
         }
     }
@@ -40,7 +51,7 @@ class Particle {
         this.dir = p5.Vector.fromAngle(radians(angle));
         this.angle = angle;
 
-        for (let a = -this.FOV / 2, i = 0; a < this.FOV / 2; a += this.resolution, i++) {
+        for (let a = -this.FOV / 2, i = 0; a < this.FOV / 2; a += this.rayDirDelta, i++) {
             this.rays[i].setDir(radians(this.angle + a));
         }
     }
@@ -50,18 +61,21 @@ class Particle {
         this.pos.y = y;
     }
 
-    cast(walls) {
+    cast(blocks) {
         let scene = [];
+        this.minDist = Infinity;
         for (let r = 0; r < this.rays.length; r++) {
             let closetPoint = null;
             let minDist = Infinity;
-            for (let wall of walls) {
-                const pt = this.rays[r].cast(wall);
-                if (pt) {
-                    const dist = p5.Vector.dist(this.pos, pt);
-                    if (dist < minDist) {
-                        closetPoint = pt;
-                        minDist = dist;
+            for (let block of blocks) {
+                for (let wall of block.walls) {
+                    const pt = this.rays[r].cast(wall);
+                    if (pt) {
+                        const dist = p5.Vector.dist(this.pos, pt);
+                        if (dist < minDist) {
+                            closetPoint = pt;
+                            minDist = dist;
+                        }
                     }
                 }
             }
@@ -71,6 +85,9 @@ class Particle {
                 line(this.pos.x, this.pos.y, closetPoint.x, closetPoint.y);
             }
             scene[r] = minDist;
+            if (minDist < this.minDist) {
+                this.minDist = minDist;
+            }
         }
         return scene;
     }
@@ -78,9 +95,5 @@ class Particle {
     draw() {
         fill(255);
         ellipse(this.pos.x, this.pos.y, 5);
-
-        for (let ray of this.rays) {
-            ray.draw();
-        }
     }
 }

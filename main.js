@@ -1,57 +1,90 @@
 /// <reference path="./libraries/p5.d/p5.global-mode.d.ts" />
 
+const FRONT = 1;
+const BACK = -1;
+const LEFT = -1.5;
+const RIGHT = 1.5;
+
+const FOV = 60;
+const res = 30;
+const sceneW = 880;
+const blockWidth = Math.ceil(sceneW / res);
+const sceneH = 500;
+const topViewW = 500;
+const topViewH = 500;
+
 var windowSize;
 
-let walls = [];
+let blocks = [];
 let particle;
+let scene;
 
-const LEFT = -90;
-const UP = 0;
-const RIGHT = 90;
-const DOWN = 180;
-
-
-const FOV = 45;
-const blockWidth = 20;
-const res = 1;
-const sceneW = FOV * blockWidth * res;
-const sceneH = 1000;
-const topViewW = 1000;
-const topViewH = 1000;
+let isUp, isDown, isLeft, isRight;
+let building = false;
 
 function setup() {
 	createCanvas(sceneW + topViewW, topViewH);
 
-	for (let i = 0; i < 4; i++) {
-		walls.push(new Boundary(random(0, topViewW), random(0, topViewH), random(0, topViewW), random(0, topViewH)));
-	}
-
 	// scene walls
-	walls.push(new Boundary(0, 0, topViewW, 0));
-	walls.push(new Boundary(0, 0, 0, topViewH));
-	walls.push(new Boundary(0, topViewH, topViewW, topViewH));
-	walls.push(new Boundary(topViewW, 0, topViewW, topViewH));
+	blocks.push(new Block());
+	blocks[0].addPoint(0,0);
+	blocks[0].addPoint(topViewW, 0);
+	blocks[0].addPoint(topViewW,topViewH);
+	blocks[0].addPoint(0,topViewH);
+	blocks[0].addPoint(0,0);
 
 	particle = new Particle(FOV, res);
+	scene = new Scene(sceneW, sceneH, topViewW, 0);
+}
 
+function mousePressed(){
+	if(!building)
+	{
+		blocks.push(new Block());
+		building = true;
+	}
+	building = blocks[blocks.length-1].addPoint(mouseX, mouseY);
+}
+
+function keyPressed() {
+	setPressedKey(keyCode, true);
+}
+
+function keyReleased() {
+	setPressedKey(keyCode, false);
+}
+
+function setPressedKey(key, isPressed) {
+	switch (key) {
+		case UP_ARROW:
+			return isUp = isPressed;
+
+		case DOWN_ARROW:
+			return isDown = isPressed;
+
+		case LEFT_ARROW:
+			return isLeft = isPressed;
+
+		case RIGHT_ARROW:
+			return isRight = isPressed;
+
+		default:
+			return isPressed;
+	}
 }
 
 function input() {
-	if (keyIsPressed === true) {
-
-		if (key == 'a') {
-			particle.move(LEFT);
-		}
-		if (key == 'w') {
-			particle.move(UP);
-		}
-		if (key == 'd') {
-			particle.move(RIGHT);
-		}
-		if (key == 's') {
-			particle.move(DOWN);
-		}
-
+	if (isUp) {
+		particle.move(FRONT);
+	}
+	if (isDown) {
+		particle.move(BACK);
+	}
+	if (isLeft) {
+		particle.rotate(LEFT);
+	}
+	if (isRight) {
+		particle.rotate(RIGHT);
 	}
 }
 
@@ -61,28 +94,12 @@ function draw() {
 
 	background(20);
 
-	//particle.setDir(mouseX, mouseY);
-	particle.setAngle((mouseX - topViewW) / sceneW * 360);
-
-	for (let wall of walls) {
-		wall.draw();
+	for (let block of blocks) {
+		block.draw();
 	}
-	const scene = particle.cast(walls);
+
+	scene.setData(particle.cast(blocks));
 	particle.draw();
 
-
-	push();
-	const w = sceneW / scene.length;
-	translate(topViewW, 0);
-	for (let i = 0; i < scene.length; i++) {
-		noStroke();
-		const color = map(scene[i], 0, topViewW, 255, 0);
-		const h = map(scene[i], 0, topViewW, sceneH, 0);
-		fill(color);
-		rectMode(CENTER);
-		rect(i * w + w / 2, sceneH / 2, w, h);
-
-	}
-	pop();
-
+	scene.draw();
 }

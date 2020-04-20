@@ -7,12 +7,15 @@ class Ray {
         this.dir = p5.Vector.fromAngle(angle);
     }
 
+
     draw() {
+        
         stroke(255);
         push();
         translate(this.pos.x, this.pos.y);
         line(0, 0, this.dir.x * 10, this.dir.y * 10);
         pop();
+        
     }
 
     pointTo(x, y) {
