@@ -5,8 +5,8 @@ const BACK = -1;
 const LEFT = -1.5;
 const RIGHT = 1.5;
 
-const FOV = 60;
-const res = 120;
+const FOV = 90;
+const res = 4;
 const sceneW = 880;
 const blockWidth = Math.ceil(sceneW / res);
 const sceneH = 500;
@@ -15,8 +15,10 @@ const topViewH = 500;
 
 const showWallBorder = false;
 
+let neuralNet;
+
 let windowSize;
-let selectedMapDir;
+let selectedMapDir = '';
 
 let blocks = [];
 let particle;
@@ -24,6 +26,9 @@ let scene;
 
 let isUp, isDown, isLeft, isRight;
 let building = false;
+let drawScene = true;
+
+var selectMap;
 
 function setup() {
 	createCanvas(sceneW + topViewW, topViewH);
@@ -38,7 +43,7 @@ function setup() {
 	saveMapButton.position(80 + margin, topViewH + margin);
 	saveMapButton.mousePressed(saveMap);
 
-	var selectMap = createSelect();
+	selectMap = createSelect();
 	selectMap.position(160 + margin, topViewH + margin);
 	selectMap.option('map1');
 	selectMap.option('map2');
@@ -46,11 +51,21 @@ function setup() {
 	selectMap.option('map4');
 	selectMap.changed(setSelectedMap);
 
+	selectedMapDir = './maps/map1.json';
+
 	var loadMapButton = createButton("Load Selected Map");
 	loadMapButton.position(240 + margin, topViewH + margin);
-	loadMapButton.mousePressed(loadMap);
+	loadMapButton.mousePressed(readJSON);
 
 	resetCanvas();
+	readJSON();
+
+	// input has [res] number of sensors
+	// 5 hidden layers
+	// 4 outputs - up, down, left, right
+	const topology = [res, 5, 4];
+
+	neuralNet = new NeuralNetwork(topology);
 }
 
 function setSelectedMap() {
@@ -78,32 +93,35 @@ function resetCanvas() {
 		block.clear();
 	}
 	blocks = [];
-	blocks.push(new Block());
-	blocks[0].addPoint(0, 0);
-	blocks[0].addPoint(topViewW, 0);
-	blocks[0].addPoint(topViewW, topViewH);
-	blocks[0].addPoint(0, topViewH);
-	blocks[0].addPoint(0, 0);
+	addPoint(0, 0);
+	addPoint(topViewW, 0);
+	addPoint(topViewW, topViewH);
+	addPoint(0, topViewH);
+	addPoint(0, 0);
 
 	particle = new Particle(FOV, res);
 	scene = new Scene(sceneW, sceneH, topViewW, 0);
 }
 
-function loadMap() {
-	resetCanvas();
-	let data = loadJSON(selectedMapDir);
-
-	console.log(data[0]["x"]);
-
-	for (let i = 0; i < data.length; i++) {
-		addPoint(data[i][0], data[i][1]);
+function loadMap(data) {
+	if (data) {
+		resetCanvas();
+		for (let item of data) {
+			addPoint(item.x, item.y);
+		}
+	} else {
+		console.log("Could not load map.");
 	}
+}
+
+function readJSON() {
+	loadJSON(selectedMapDir, loadMap);
 }
 
 function saveMap() {
 	let data = [];
 
-	for (let i = 0; i < blocks.length; i++) {
+	for (let i = 1; i < blocks.length; i++) {
 		for (let j = 0; j < blocks[i].points.length - 1; j++) {
 			data.push({
 				"x": blocks[i].points[j].x,
@@ -116,7 +134,7 @@ function saveMap() {
 		});
 	}
 
-	saveJSON(data, "map999.json");
+	saveJSON(data, "map1.json");
 }
 
 function mousePressed() {
@@ -129,7 +147,7 @@ function addPoint(x, y) {
 			blocks.push(new Block());
 			building = true;
 		}
-		building = blocks[blocks.length - 1].addPoint(mouseX, mouseY);
+		building = blocks[blocks.length - 1].addPoint(x, y);
 	}
 }
 
@@ -162,10 +180,10 @@ function setPressedKey(key, isPressed) {
 
 function input() {
 	if (isUp) {
-		particle.move(FRONT);
+		particle.acc(FRONT);
 	}
 	if (isDown) {
-		particle.move(BACK);
+		particle.break(BACK);
 	}
 	if (isLeft) {
 		particle.rotate(LEFT);
@@ -175,6 +193,12 @@ function input() {
 	}
 }
 
+function checkBoundaries(x, y) {
+	if (x < 0 || y < 0 || x > topViewW || y > topViewH) {
+		return false;
+	}
+	return true;
+}
 
 function draw() {
 	input();
@@ -185,15 +209,11 @@ function draw() {
 		block.draw();
 	}
 
-	scene.setData(particle.cast(blocks));
+	const data = particle.cast(blocks);
 	particle.draw();
 
-	scene.draw();
-}
-
-function checkBoundaries(x, y) {
-	if (x < 0 || y < 0 || x > topViewW || y > topViewH) {
-		return false;
+	if (drawScene) {
+		scene.setData(data);
+		scene.draw();
 	}
-	return true;
 }

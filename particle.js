@@ -7,17 +7,20 @@ class Particle {
         this.rays = [];
         this.FOV = fov;
         this.resolution = res;
-        this.rayDirDelta = this.FOV / this.resolution;
+        this.rayDirDelta = this.FOV / (this.resolution-1);
         this.dir = createVector();
         this.angle = 0;
-        this.speed = 1.5;
+        this.speed = 0;
         this.minDist = Infinity;
+        this.distTraveled = 0;
+        this.alive = true;
 
-        for (let a = 0; a < this.FOV; a += this.rayDirDelta) {
+        for (let a = 0; a <= this.FOV; a += this.rayDirDelta) {
             this.rays.push(new Ray(this.pos, radians(a)));
         }
     }
 
+    //TODO : change movement system
     move(direction) {
         let movDir = this.dir.copy();
         movDir.mult(this.speed * direction);
@@ -35,22 +38,20 @@ class Particle {
     }
 
     // get the mouse pos, point to it
-    setDir(x, y) {
+    lookAt(x, y) {
         this.dir.x = x - this.pos.x;
         this.dir.y = y - this.pos.y;
         this.dir.normalize();
         this.angle = degrees(this.dir.heading());
 
-        for (let a = -this.FOV / 2, i = 0; a < this.FOV / 2; a += this.rayDirDelta, i++) {
-            this.rays[i].setDir(radians(this.angle + a));
-        }
+        this.setAngle(this.angle);
     }
 
     setAngle(angle) {
         this.dir = p5.Vector.fromAngle(radians(angle));
         this.angle = angle;
 
-        for (let a = -this.FOV / 2, i = 0; a < this.FOV / 2; a += this.rayDirDelta, i++) {
+        for (let a = -this.FOV / 2, i = 0; a <= this.FOV / 2; a += this.rayDirDelta, i++) {
             this.rays[i].setDir(radians(this.angle + a));
         }
     }
