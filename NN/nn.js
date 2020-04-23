@@ -1,3 +1,6 @@
+/**
+ * A mini library for Artificial Neural Network inspired by ToyNeuralNetwork - https://github.com/CodingTrain/Toy-Neural-Network-JS
+ */
 class NeuralNetwork {
   /**
    * @param  {Array} arg_array - array of counts of neurons in each layer

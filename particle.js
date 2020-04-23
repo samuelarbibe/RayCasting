@@ -1,36 +1,87 @@
 /// <reference path="./libraries/p5.d/p5.global-mode.d.ts" />
 
-class Particle {
+function mutate(x) {
+    if (random(1) < 0.1) {
+        let offset = randomGaussian() * 0.5;
+        let newx = x + offset;
+        return newx;
+    } else {
+        return x;
+    }
+}
 
-    constructor(fov, res) {
+class Particle {
+    constructor(brain) {
         this.pos = createVector(topViewW / 2 + 1, topViewH / 2);
         this.rays = [];
-        this.FOV = fov;
+        this.FOV = FOV;
         this.resolution = res;
-        this.rayDirDelta = this.FOV / (this.resolution-1);
+        this.rayDirDelta = this.FOV / (this.resolution - 1);
         this.dir = createVector();
         this.angle = 0;
-        this.speed = 0;
+        this.speed = 3;
         this.minDist = Infinity;
-        this.distTraveled = 0;
+        this.score = 0; // the 'score'
+        this.fitness = 0; // the normalized 'score'
         this.alive = true;
+        this.scene = [];
 
         for (let a = 0; a <= this.FOV; a += this.rayDirDelta) {
             this.rays.push(new Ray(this.pos, radians(a)));
         }
+
+        if (brain instanceof NeuralNetwork) {
+            this.brain = brain.copy();
+            this.brain.mutate(0.2);
+        } else {
+            this.brain = new NeuralNetwork([this.rays.length, this.rays.length + 2, 2]);
+        }
     }
 
-    //TODO : change movement system
-    move(direction) {
-        let movDir = this.dir.copy();
-        movDir.mult(this.speed * direction);
+    copy() {
+        return new Particle(this.brain);
+    }
 
-        const nextPos = p5.Vector.add(movDir, this.pos);
-        // check if out boundaries
-        if (!checkBoundaries(nextPos.x, nextPos.y) || (direction > 0 && this.minDist < 5)) {
-            return;
+    applyOutput(output) {
+        // turn right
+        if (output > 0.5) {
+            this.rotate(7);
+        } // turn left
+        else {
+            this.rotate(-7);
         }
-        this.pos.add(movDir);
+    }
+
+    update() {
+        if (this.speed != 0 && this.alive) {
+            let movDir = this.dir.copy();
+            movDir.mult(this.speed);
+
+            this.score += movDir.mag();
+
+            const nextPos = p5.Vector.add(movDir, this.pos);
+            // check if out boundaries, if out then die.
+            if (!checkBoundaries(nextPos.x, nextPos.y) || (this.speed > 0 && this.minDist < 5)) {
+                this.alive = false;
+                this.speed = 0;
+                return;
+            }
+            this.pos.add(movDir);
+        }
+    }
+
+    think(blocks) {
+        // calculate inputs
+        this.cast(blocks);
+        // send inputs, get action
+        var action = this.brain.feedforward(this.scene);
+        // decide to turn right or left
+        if (action[0] > action[1]) {
+            this.rotate(-5);
+        } else {
+            this.rotate(5);
+        }
+
     }
 
     rotate(amount) {
@@ -62,7 +113,7 @@ class Particle {
     }
 
     cast(blocks) {
-        let scene = [];
+        this.scene = [];
         this.minDist = Infinity;
         for (let r = 0; r < this.rays.length; r++) {
             let closetPoint = null;
@@ -84,7 +135,7 @@ class Particle {
             if (closetPoint) {
                 line(this.pos.x, this.pos.y, closetPoint.x, closetPoint.y);
             }
-            scene[r] = minDist;
+            this.scene[r] = minDist;
             if (minDist < this.minDist) {
                 this.minDist = minDist;
             }
@@ -97,8 +148,6 @@ class Particle {
                 }
             }
         }
-
-        return scene;
     }
 
     draw() {

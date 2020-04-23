@@ -1,3 +1,6 @@
+/**
+ * Matrix library based on - https://github.com/CodingTrain/Toy-Neural-Network-JS/blob/master/lib/matrix.js
+ */
 class Matrix {
   /**
    * Values are initialized to 0

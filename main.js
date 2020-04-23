@@ -1,34 +1,35 @@
 /// <reference path="./libraries/p5.d/p5.global-mode.d.ts" />
 
-const FRONT = 1;
-const BACK = -1;
-const LEFT = -1.5;
-const RIGHT = 1.5;
+//https://shiffman.github.io/Neural-Network-p5/examples/neuro-evolution/flappy/
 
-const FOV = 90;
-const res = 4;
+const FOV = 180;
+const res = 5;
 const sceneW = 880;
 const blockWidth = Math.ceil(sceneW / res);
 const sceneH = 500;
 const topViewW = 500;
 const topViewH = 500;
-
 const showWallBorder = false;
-
 let neuralNet;
-
 let windowSize;
 let selectedMapDir = '';
-
-let blocks = [];
 let particle;
 let scene;
-
 let isUp, isDown, isLeft, isRight;
 let building = false;
 let drawScene = true;
-
+let myFont = null;
 var selectMap;
+const cyclePerFrame = 1;
+
+let totalPop = 20;
+let activeParticles = [];
+let allParticles = [];
+let blocks = [];
+let genCount = 0;
+
+let highScore = 0;
+let bestParticle = null;
 
 function setup() {
 	createCanvas(sceneW + topViewW, topViewH);
@@ -51,7 +52,7 @@ function setup() {
 	selectMap.option('map4');
 	selectMap.changed(setSelectedMap);
 
-	selectedMapDir = './maps/map1.json';
+	setSelectedMap();
 
 	var loadMapButton = createButton("Load Selected Map");
 	loadMapButton.position(240 + margin, topViewH + margin);
@@ -60,30 +61,105 @@ function setup() {
 	resetCanvas();
 	readJSON();
 
-	// input has [res] number of sensors
-	// 5 hidden layers
-	// 4 outputs - up, down, left, right
-	const topology = [res, 5, 4];
+	// create a population
+	for (let i = 0; i < totalPop; i++) {
+		let particle = new Particle();
+		activeParticles[i] = particle;
+		allParticles[i] = particle;
+	}
+	genCount++;
+}
 
-	neuralNet = new NeuralNetwork(topology);
+function preload() {
+	myFont = loadFont("./resources/Roboto-Light.ttf");
+}
+
+function draw() {
+
+	background(20);
+
+	for (let i = 0; i < cyclePerFrame; i++) {
+		for (let j = activeParticles.length - 1; j >= 0; j--) {
+			let particle = activeParticles[j];
+			// make the particle think
+			particle.think(blocks);
+			// update its position after it has thinked
+			particle.update();
+
+			// check if it has died
+			if (!particle.alive) {
+				activeParticles.splice(j, 1);
+			}
+		}
+	}
+
+	// find best score of this population
+	let popHighScore = 0;
+	let popBestParticle = null;
+	for (let i = 0; i < activeParticles.length; i++) {
+		let s = activeParticles[i].score;
+		if (s > popHighScore) {
+			popHighScore = s;
+			popBestParticle = activeParticles[i];
+		}
+	}
+
+	// check if its all time high score
+	if (popHighScore > highScore) {
+		highScore = popHighScore;
+		bestParticle = popBestParticle;
+	}
+
+	// draw all blocks
+	for (let block of blocks) {
+		block.draw();
+	}
+
+	// draw all active birds
+	for (let particle of activeParticles) {
+		particle.draw();
+	}
+
+	// draw text 
+	const t1 = "Generation: " + genCount.toString();
+	const t2 = "Particles alive: " + activeParticles.length.toString() + "/" + totalPop.toString();
+	const t3 = "Max Score: " + highScore.toString();
+
+	push();
+	fill(240);
+	textFont(myFont);
+	textSize(10);
+	text(t1, 10, 20);
+	text(t2, 10, 35);
+	text(t3, 10, 50);
+	pop();
+
+	// check if all birds have dies.
+	// then, create a new gen.
+	if (activeParticles.length == 0) {
+		console.log("high score is");
+		console.log(highScore);
+		nextGeneration();
+		console.log("new gen created");
+	}
 }
 
 function setSelectedMap() {
 	switch (selectMap.value()) {
 		case 'map1':
-			selectedMapDir = './maps/map1.json';
+			selectedMapDir = './resources/maps/map1.json';
 			break;
 		case 'map2':
-			selectedMapDir = './maps/map2.json';
+			selectedMapDir = './resources/maps/map2.json';
 			break;
 		case 'map3':
-			selectedMapDir = './maps/map3.json';
+			selectedMapDir = './resources/maps/map3.json';
 			break;
 		case 'map4':
-			selectedMapDir = './maps/map4.json';
+			selectedMapDir = './resources/maps/map4.json';
 			break;
 		default:
-			selectedMapDir = './maps/map1.json';
+			selectedMapDir = './resources/maps/map1.json';
 			break;
 	}
 }
@@ -99,8 +175,7 @@ function resetCanvas() {
 	addPoint(0, topViewH);
 	addPoint(0, 0);
 
-	particle = new Particle(FOV, res);
-	scene = new Scene(sceneW, sceneH, topViewW, 0);
+	//this.scene = new Scene(sceneW, sceneH, topViewW, 0);
 }
 
 function loadMap(data) {
@@ -180,16 +255,16 @@ function setPressedKey(key, isPressed) {
 
 function input() {
 	if (isUp) {
-		particle.acc(FRONT);
+		particle.speed = 2;
 	}
 	if (isDown) {
-		particle.break(BACK);
+		particle.speed = 0;
 	}
 	if (isLeft) {
-		particle.rotate(LEFT);
+		particle.rotate(-2);
 	}
 	if (isRight) {
-		particle.rotate(RIGHT);
+		particle.rotate(2);
 	}
 }
 
@@ -198,22 +273,4 @@ function checkBoundaries(x, y) {
 		return false;
 	}
 	return true;
-}
-
-function draw() {
-	input();
-
-	background(20);
-
-	for (let block of blocks) {
-		block.draw();
-	}
-
-	const data = particle.cast(blocks);
-	particle.draw();
-
-	if (drawScene) {
-		scene.setData(data);
-		scene.draw();
-	}
 }
