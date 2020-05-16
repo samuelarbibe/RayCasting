@@ -1,5 +1,6 @@
 # RayCasting
-A p5.js genetic algorithm / artificial-neural-network using ray-casting with semi-3d visualization
+A p5.js genetic algorithm / artificial-neural-network using ray-casting with semi-3d visualization.
+* [Try it out](https://samuelarbibe.github.io/ray-casting/)
 
 ## Table of contents
 * [General info](#general-info)
